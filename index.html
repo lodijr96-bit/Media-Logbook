@@ -241,22 +241,85 @@ async function saveEntries() {
   await ghPush(entries, fileSha);
 }
 
-// ── Genre AI ──────────────────────────────────────────────────────────────
+// ── Genre Fetch — free public APIs, no key required ──────────────────────
+
+async function fetchFromOpenLibrary(title) {
+  const q = encodeURIComponent(title);
+  const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=subject,genre`);
+  const data = await res.json();
+  const doc = data?.docs?.[0];
+  const subjects = [...(doc?.genre || []), ...(doc?.subject || [])];
+  const clean = subjects.filter(s => s.length < 28 && !s.includes('--') && !/^\d{4}/.test(s) && !/fiction$/i.test(s) === false || /fiction|fantasy|mystery|thriller|romance|horror|science|adventure|history|biography/i.test(s));
+  // Prefer shorter, recognizable genre words
+  const genres = subjects.filter(s => s.length < 25 && !s.includes('--') && !/^\d/.test(s)).slice(0, 3);
+  return genres.length ? genres.join(', ') : '';
+}
+
+async function fetchFromJikan(title) {
+  const q = encodeURIComponent(title);
+  const res = await fetch(`https://api.jikan.moe/v4/manga?q=${q}&limit=1`);
+  const data = await res.json();
+  const genres = data?.data?.[0]?.genres?.map(g => g.name) || [];
+  return genres.slice(0, 3).join(', ');
+}
+
+async function fetchFromiTunes(title, type) {
+  const q = encodeURIComponent(title);
+  const media = type === 'Movie' ? 'movie' : 'tvShow';
+  const entity = type === 'Movie' ? 'movie' : 'tvSeason';
+  const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=${media}&entity=${entity}&limit=1`);
+  const data = await res.json();
+  const item = data?.results?.[0];
+  if (!item) return '';
+  // iTunes returns primaryGenreName
+  return item.primaryGenreName || '';
+}
+
+async function fetchFromWikipedia(title, type) {
+  // Use Wikipedia's REST API to get the intro text, then look for genre mentions
+  const q = encodeURIComponent(`${title} ${type}`);
+  const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+  const data = await res.json();
+  if (data?.type === 'disambiguation' || !data?.extract) return '';
+  // Look for genre patterns in the extract
+  const extract = data.extract;
+  const genreMatch = extract.match(/(?:is a|is an|a|an)\s+([\w\s-]+?)\s+(?:video game|game|manga|comic|novel|book|film|movie|series|show)/i);
+  if (genreMatch) {
+    return genreMatch[1].trim().replace(/^(american|japanese|korean|british|french)\s+/i, '');
+  }
+  return '';
+}
+
 async function fetchGenreAI(title, type) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:60,
-        messages:[{role:'user',content:`What are the 1-3 main genres of the ${type} titled "${title}"? Reply with ONLY a comma-separated list of genre names, nothing else. Example: Science Fiction, Adventure. If unknown, reply: Unknown`}]
-      })
-    });
-    const data = await res.json();
-    const text = data?.content?.[0]?.text?.trim() || '';
-    if (!text || text.toLowerCase().startsWith('unknown')) return '';
-    return text;
+    if (type === 'Book' || type === 'Comic') {
+      const g = await fetchFromOpenLibrary(title);
+      if (g) return g;
+    }
+    if (type === 'Manga') {
+      const g = await fetchFromJikan(title);
+      if (g) return g;
+      // fallback to Wikipedia
+      return await fetchFromWikipedia(title, type);
+    }
+    if (type === 'Movie' || type === 'Series') {
+      const g = await fetchFromiTunes(title, type);
+      if (g) return g;
+      return await fetchFromWikipedia(title, type);
+    }
+    if (type === 'Video Game') {
+      // Try Wikipedia first — RAWG requires a key
+      const g = await fetchFromWikipedia(title, type);
+      if (g) return g;
+      // Fallback: iTunes games category
+      const q = encodeURIComponent(title);
+      const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=software&entity=software&limit=3`);
+      const data = await res.json();
+      const game = data?.results?.find(r => r.genres?.length);
+      return game?.genres?.[0] || '';
+    }
   } catch { return ''; }
+  return '';
 }
 
 function triggerGenreFetch() {
