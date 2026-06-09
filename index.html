@@ -241,7 +241,8 @@ async function saveEntries() {
   await ghPush(entries, fileSha);
 }
 
-// ── Genre Fetch — free public APIs, no key required ──────────────────────
+// ── Genre Fetch ───────────────────────────────────────────────────────────
+const TMDB_KEY = '1aafd57e780f2cbb6a10dd67960df17a';
 
 async function fetchFromOpenLibrary(title) {
   const q = encodeURIComponent(title);
@@ -249,8 +250,6 @@ async function fetchFromOpenLibrary(title) {
   const data = await res.json();
   const doc = data?.docs?.[0];
   const subjects = [...(doc?.genre || []), ...(doc?.subject || [])];
-  const clean = subjects.filter(s => s.length < 28 && !s.includes('--') && !/^\d{4}/.test(s) && !/fiction$/i.test(s) === false || /fiction|fantasy|mystery|thriller|romance|horror|science|adventure|history|biography/i.test(s));
-  // Prefer shorter, recognizable genre words
   const genres = subjects.filter(s => s.length < 25 && !s.includes('--') && !/^\d/.test(s)).slice(0, 3);
   return genres.length ? genres.join(', ') : '';
 }
@@ -263,30 +262,25 @@ async function fetchFromJikan(title) {
   return genres.slice(0, 3).join(', ');
 }
 
-async function fetchFromiTunes(title, type) {
+async function fetchFromTMDB(title, type) {
   const q = encodeURIComponent(title);
-  const media = type === 'Movie' ? 'movie' : 'tvShow';
-  const entity = type === 'Movie' ? 'movie' : 'tvSeason';
-  const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=${media}&entity=${entity}&limit=1`);
+  const endpoint = type === 'Movie' ? 'movie' : 'tv';
+  const res = await fetch(`https://api.themoviedb.org/3/search/${endpoint}?api_key=${TMDB_KEY}&query=${q}`);
   const data = await res.json();
   const item = data?.results?.[0];
   if (!item) return '';
-  // iTunes returns primaryGenreName
-  return item.primaryGenreName || '';
+  const detail = await fetch(`https://api.themoviedb.org/3/${endpoint}/${item.id}?api_key=${TMDB_KEY}`);
+  const ddata = await detail.json();
+  const genres = ddata?.genres?.map(g => g.name) || [];
+  return genres.slice(0, 3).join(', ');
 }
 
-async function fetchFromWikipedia(title, type) {
-  // Use Wikipedia's REST API to get the intro text, then look for genre mentions
-  const q = encodeURIComponent(`${title} ${type}`);
+async function fetchFromWikipedia(title) {
   const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
   const data = await res.json();
   if (data?.type === 'disambiguation' || !data?.extract) return '';
-  // Look for genre patterns in the extract
-  const extract = data.extract;
-  const genreMatch = extract.match(/(?:is a|is an|a|an)\s+([\w\s-]+?)\s+(?:video game|game|manga|comic|novel|book|film|movie|series|show)/i);
-  if (genreMatch) {
-    return genreMatch[1].trim().replace(/^(american|japanese|korean|british|french)\s+/i, '');
-  }
+  const match = data.extract.match(/(?:is a|is an)\s+([\w\s-]+?)\s+(?:video game|game|manga|comic|novel|book|film|movie|series|show)/i);
+  if (match) return match[1].trim().replace(/^(american|japanese|korean|british|french)\s+/i, '');
   return '';
 }
 
@@ -295,28 +289,20 @@ async function fetchGenreAI(title, type) {
     if (type === 'Book' || type === 'Comic') {
       const g = await fetchFromOpenLibrary(title);
       if (g) return g;
+      return await fetchFromWikipedia(title);
     }
     if (type === 'Manga') {
       const g = await fetchFromJikan(title);
       if (g) return g;
-      // fallback to Wikipedia
-      return await fetchFromWikipedia(title, type);
+      return await fetchFromWikipedia(title);
     }
     if (type === 'Movie' || type === 'Series') {
-      const g = await fetchFromiTunes(title, type);
+      const g = await fetchFromTMDB(title, type);
       if (g) return g;
-      return await fetchFromWikipedia(title, type);
+      return await fetchFromWikipedia(title);
     }
     if (type === 'Video Game') {
-      // Try Wikipedia first — RAWG requires a key
-      const g = await fetchFromWikipedia(title, type);
-      if (g) return g;
-      // Fallback: iTunes games category
-      const q = encodeURIComponent(title);
-      const res = await fetch(`https://itunes.apple.com/search?term=${q}&media=software&entity=software&limit=3`);
-      const data = await res.json();
-      const game = data?.results?.find(r => r.genres?.length);
-      return game?.genres?.[0] || '';
+      return await fetchFromWikipedia(title);
     }
   } catch { return ''; }
   return '';
