@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0e0e0e"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="LOGBOOK"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="apple-touch-icon" href="./icon-192.png"/>
+<title>LOGBOOK</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#0e0e0e;color:#e8e4dc;font-family:Georgia,serif;min-height:100vh;padding-bottom:env(safe-area-inset-bottom);}
+  input,textarea,button,select{font-family:Georgia,serif;}
+  input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.5);}
+  ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:#0e0e0e;} ::-webkit-scrollbar-thumb{background:#2a2a2a;}
+  #app{max-width:640px;margin:0 auto;padding:20px 16px 80px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:1px solid #2a2a2a;padding-bottom:16px;}
+  .header-title{font-size:28px;font-weight:bold;letter-spacing:6px;color:#e8e4dc;}
+  .header-sub{font-size:11px;color:#666;letter-spacing:2px;margin-top:2px;}
+  .btn-add{background:#e8e4dc;color:#0e0e0e;border:none;padding:8px 14px;font-weight:bold;font-size:12px;cursor:pointer;letter-spacing:1px;}
+  .btn-summary{background:transparent;color:#888;border:1px solid #2a2a2a;padding:8px 14px;font-size:12px;cursor:pointer;letter-spacing:1px;}
+  .btn-cancel{background:transparent;color:#888;border:1px solid #333;padding:8px 16px;font-size:13px;cursor:pointer;letter-spacing:1px;}
+  .btn-back{background:transparent;color:#888;border:none;font-size:13px;cursor:pointer;padding:0;letter-spacing:1px;}
+  .btn-submit{background:#e8e4dc;color:#0e0e0e;border:none;padding:11px 24px;font-weight:bold;font-size:13px;cursor:pointer;letter-spacing:1px;width:100%;margin-top:4px;}
+  .stats-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+  .stat-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;background:#161616;border:1px solid #2a2a2a;}
+  .stat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .stat-label{font-size:10px;color:#666;letter-spacing:1px;}
+  .stat-count{font-size:13px;color:#e8e4dc;font-weight:bold;}
+  .filters{margin-bottom:16px;}
+  .search-input{width:100%;background:#161616;border:1px solid #2a2a2a;color:#e8e4dc;padding:9px 12px;font-size:13px;margin-bottom:10px;outline:none;}
+  .filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .filter-btn{background:transparent;border:1px solid #2a2a2a;color:#555;padding:5px 10px;font-size:11px;cursor:pointer;}
+  .filter-active{background:#e8e4dc22;border:1px solid #888;color:#e8e4dc;padding:5px 10px;font-size:11px;cursor:pointer;}
+  .list{display:flex;flex-direction:column;gap:6px;}
+  .card{background:#161616;border:1px solid #2a2a2a;padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;cursor:pointer;}
+  .card:active{background:#1e1e1e;}
+  .card-left{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0;}
+  .type-icon{font-size:18px;flex-shrink:0;margin-top:2px;}
+  .card-info{flex:1;min-width:0;}
+  .card-title{font-size:15px;color:#e8e4dc;margin-bottom:3px;word-break:break-word;}
+  .card-genre{font-size:11px;color:#555;letter-spacing:1px;margin-bottom:4px;}
+  .card-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .card-rating{font-size:13px;color:#f5a623;}
+  .card-date{font-size:11px;color:#444;font-style:italic;}
+  .status-badge{font-size:10px;letter-spacing:1px;padding:3px 8px;border:1px solid;white-space:nowrap;flex-shrink:0;}
+  .empty{color:#555;text-align:center;padding:48px 0;font-style:italic;font-size:14px;}
+  .form-card{background:#161616;border:1px solid #2a2a2a;padding:20px;}
+  .field-group{margin-bottom:16px;}
+  .field-label{font-size:10px;letter-spacing:2px;color:#555;display:block;margin-bottom:8px;}
+  .fetching-label{color:#4a9eff;font-style:italic;letter-spacing:0;}
+  .genre-hint{font-size:11px;color:#666;font-style:italic;margin-top:5px;}
+  .text-input{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#e8e4dc;padding:10px 12px;font-size:15px;outline:none;}
+  .date-input{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#e8e4dc;padding:10px 12px;font-size:13px;outline:none;color-scheme:dark;}
+  .textarea{width:100%;background:#0e0e0e;border:1px solid #2a2a2a;color:#e8e4dc;padding:10px 12px;font-size:13px;resize:vertical;outline:none;}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill{background:transparent;border:1px solid #2a2a2a;color:#555;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .pill-active{background:#e8e4dc22;border:1px solid #e8e4dc;color:#e8e4dc;padding:6px 12px;font-size:12px;cursor:pointer;}
+  .stars{display:flex;align-items:center;gap:4px;}
+  .star{font-size:28px;cursor:pointer;color:#333;}
+  .star.on{color:#f5a623;}
+  .clear-rating{font-size:11px;color:#555;cursor:pointer;margin-left:4px;}
+  .date-row{display:flex;gap:12px;}
+  .date-row > div{flex:1;}
+  .date-hint{font-size:11px;color:#3a3a3a;font-style:italic;margin-top:-8px;margin-bottom:16px;}
+  .actions-row{display:flex;gap:12px;}
+  .action-btn{background:transparent;border:none;cursor:pointer;font-size:13px;color:#888;padding:0;}
+  /* Detail */
+  .detail-card{background:#161616;border:1px solid #2a2a2a;padding:24px;}
+  .detail-type-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .detail-type-icon{font-size:20px;}
+  .detail-type{font-size:10px;letter-spacing:3px;color:#555;}
+  .detail-title{font-size:22px;color:#e8e4dc;line-height:1.3;margin-bottom:14px;}
+  .detail-genre-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .genre-tag{background:#1a1a1a;border:1px solid #2a2a2a;color:#777;font-size:11px;padding:3px 9px;letter-spacing:1px;}
+  .detail-rating{font-size:22px;color:#f5a623;margin-bottom:14px;}
+  .detail-dates{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .date-chip{background:#1a1a1a;border:1px solid #2a2a2a;padding:7px 12px;display:flex;flex-direction:column;gap:2px;}
+  .date-chip-label{font-size:9px;letter-spacing:2px;color:#555;}
+  .date-chip-val{font-size:13px;color:#aaa;}
+  .detail-notes{border-top:1px solid #2a2a2a;padding-top:14px;margin-top:4px;}
+  .detail-notes-label{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:8px;}
+  .detail-notes-text{font-size:13px;color:#aaa;line-height:1.7;font-style:italic;}
+  /* Summary */
+  .tab-toggle{display:flex;border:1px solid #2a2a2a;margin-bottom:24px;}
+  .tab-btn{flex:1;padding:10px;background:transparent;color:#555;border:none;font-size:12px;letter-spacing:1px;cursor:pointer;}
+  .tab-btn.active{background:#e8e4dc;color:#0e0e0e;}
+  .summary-section{margin-bottom:24px;}
+  .section-label{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:12px;}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;}
+  .legend-item{display:flex;align-items:center;gap:6px;}
+  .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+  .legend-text{font-size:11px;color:#888;}
+  /* Export/Import */
+  .io-bar{display:flex;gap:8px;margin-bottom:16px;}
+  .btn-io{background:transparent;color:#666;border:1px solid #2a2a2a;padding:6px 12px;font-size:11px;cursor:pointer;letter-spacing:1px;}
+  .btn-io:active{background:#1e1e1e;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────
+const TYPES = ["Book","Series","Movie","Manga","Comic","Video Game"];
+const STATUSES = ["Want","In Progress","Done"];
+const STATUS_COLORS = {"Want":"#4a9eff","In Progress":"#f5a623","Done":"#5cb85c"};
+const TYPE_ICONS = {Book:"📖",Series:"📺",Movie:"🎬",Manga:"🈶",Comic:"💬","Video Game":"🎮"};
+const CHART_COLORS = ["#4a9eff","#f5a623","#5cb85c","#e67e9a","#a78bfa","#34d399","#fb923c","#f472b6","#a3e635","#60a5fa"];
+
+// ── State ────────────────────────────────────────────────────────────────
+let entries = JSON.parse(localStorage.getItem('logbook-entries') || '[]');
+let view = 'list'; // list | add | detail | summary
+let editId = null;
+let detailId = null;
+let filterType = 'All';
+let filterStatus = 'All';
+let searchQuery = '';
+let summaryTab = 'type';
+let summaryYear = 'All';
+let genreDebounce = null;
+let genreLoading = false;
+let genreError = '';
+
+let form = emptyForm();
+function emptyForm() {
+  return {title:'',type:'Book',status:'Want',rating:0,notes:'',genre:'',startDate:'',endDate:'',createdYear:String(new Date().getFullYear())};
+}
+
+// ── Persistence ──────────────────────────────────────────────────────────
+function saveEntries() {
+  localStorage.setItem('logbook-entries', JSON.stringify(entries));
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${m}/${d}/${y}`;
+}
+function effectiveYear(e) {
+  if (e.endDate) return e.endDate.slice(0,4);
+  if (e.startDate) return e.startDate.slice(0,4);
+  return e.createdYear || String(new Date().getFullYear());
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function stars(n, max=5) {
+  return `<span style="color:#f5a623">${'★'.repeat(n)}</span><span style="color:#2a2a2a">${'★'.repeat(max-n)}</span>`;
+}
+
+// ── Genre AI fetch ───────────────────────────────────────────────────────
+async function fetchGenreAI(title, type) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:60,
+        messages:[{role:'user',content:`What are the 1-3 main genres of the ${type} titled "${title}"? Reply with ONLY a comma-separated list of genre names, nothing else. Example: Science Fiction, Adventure. If unknown, reply: Unknown`}]
+      })
+    });
+    const data = await res.json();
+    const text = data?.content?.[0]?.text?.trim() || '';
+    if (!text || text.toLowerCase().startsWith('unknown')) return '';
+    return text;
+  } catch { return ''; }
+}
+
+function triggerGenreFetch() {
+  clearTimeout(genreDebounce);
+  if (!form.title.trim()) { genreError=''; render(); return; }
+  genreDebounce = setTimeout(async () => {
+    genreLoading = true; genreError=''; render();
+    const g = await fetchGenreAI(form.title, form.type);
+    genreLoading = false;
+    if (g) { form.genre = g; genreError=''; }
+    else { genreError = "Couldn't find — type it manually."; }
+    render();
+  }, 900);
+}
+
+// ── Summary helpers ──────────────────────────────────────────────────────
+function buildSummary(es) {
+  const byType={}, byGenre={};
+  es.forEach(e => {
+    byType[e.type]=(byType[e.type]||0)+1;
+    if(e.genre) e.genre.split(',').map(g=>g.trim()).filter(Boolean).forEach(g=>{byGenre[g]=(byGenre[g]||0)+1;});
+  });
+  return {byType,byGenre};
+}
+
+// ── SVG Charts ───────────────────────────────────────────────────────────
+function pieChartSVG(data, size=180) {
+  if (!data.length) return '';
+  const total = data.reduce((s,d)=>s+d.v,0);
+  if (!total) return '';
+  const cx=size/2, cy=size/2, r=size/2-10;
+  let angle = -Math.PI/2;
+  let paths='';
+  let labels='';
+  data.forEach((d,i) => {
+    const slice = (d.v/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    angle+=slice;
+    const x2=cx+r*Math.cos(angle), y2=cy+r*Math.sin(angle);
+    const large=slice>Math.PI?1:0;
+    const mid=angle-slice/2;
+    const lx=cx+(r*0.65)*Math.cos(mid), ly=cy+(r*0.65)*Math.sin(mid);
+    const pct=Math.round((d.v/total)*100);
+    const col=CHART_COLORS[i%CHART_COLORS.length];
+    paths+=`<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${col}" stroke="#0e0e0e" stroke-width="2"/>`;
+    if(slice>0.3) labels+=`<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" style="font-size:10px;fill:#0e0e0e;font-weight:bold;font-family:Georgia,serif">${pct}%</text>`;
+  });
+  return `<svg width="${size}" height="${size}" style="display:block;margin:0 auto">${paths}${labels}</svg>`;
+}
+
+function barChartSVG(data, maxBars=12) {
+  const items=data.slice(0,maxBars);
+  const max=items.length?items[0].v:1;
+  const rowH=32, pad=100, chartW=260, svgH=items.length*rowH+10;
+  let rows='';
+  items.forEach((d,i)=>{
+    const barW=Math.max(2,(d.v/max)*chartW);
+    const y=i*rowH+4;
+    const col=CHART_COLORS[i%CHART_COLORS.length];
+    const lbl=d.k.length>15?d.k.slice(0,14)+'…':d.k;
+    rows+=`<text x="${pad-6}" y="${y+12}" text-anchor="end" style="font-size:11px;fill:#aaa;font-family:Georgia,serif">${esc(lbl)}</text>`;
+    rows+=`<rect x="${pad}" y="${y}" width="${barW.toFixed(1)}" height="18" fill="${col}" rx="1"/>`;
+    rows+=`<text x="${pad+barW+6}" y="${y+12}" style="font-size:11px;fill:#666;font-family:Georgia,serif">${d.v}</text>`;
+  });
+  return `<svg width="100%" viewBox="0 0 ${pad+chartW+40} ${svgH}" style="display:block;overflow:visible">${rows}</svg>`;
+}
+
+function legendHTML(data) {
+  return data.map((d,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${CHART_COLORS[i%CHART_COLORS.length]}"></div><span class="legend-text">${esc(d.k)} (${d.v})</span></div>`).join('');
+}
+
+// ── Export / Import ──────────────────────────────────────────────────────
+function exportData() {
+  const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='logbook-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData() {
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.json';
+  inp.onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data)) {
+          entries = data; saveEntries();
+          alert(`Imported ${data.length} entries.`); render();
+        } else { alert('Invalid file format.'); }
+      } catch { alert('Could not read file.'); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('app').innerHTML = buildHTML();
+  bindEvents();
+}
+
+function buildHTML() {
+  if (view==='summary') return buildSummaryHTML();
+  if (view==='detail') return buildDetailHTML();
+  if (view==='add') return buildFormHTML();
+  return buildListHTML();
+}
+
+// ── List ─────────────────────────────────────────────────────────────────
+function buildListHTML() {
+  const counts={};
+  STATUSES.forEach(s=>counts[s]=entries.filter(e=>e.status===s).length);
+
+  const filtered = entries.filter(e => {
+    if (filterType!=='All' && e.type!==filterType) return false;
+    if (filterStatus!=='All' && e.status!==filterStatus) return false;
+    if (searchQuery && !e.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const statsHTML = STATUSES.map(s=>`
+    <div class="stat-chip">
+      <div class="stat-dot" style="background:${STATUS_COLORS[s]}"></div>
+      <span class="stat-label">${s}</span>
+      <span class="stat-count">${counts[s]||0}</span>
+    </div>`).join('')+`
+    <div class="stat-chip">
+      <div class="stat-dot" style="background:#555"></div>
+      <span class="stat-label">Total</span>
+      <span class="stat-count">${entries.length}</span>
+    </div>`;
+
+  const typeFilters = ['All',...TYPES].map(t=>`
+    <button class="${filterType===t?'filter-active':'filter-btn'}" data-filter-type="${esc(t)}">
+      ${t==='All'?'All':TYPE_ICONS[t]+' '+t}
+    </button>`).join('');
+
+  const statusFilters = ['All',...STATUSES].map(s => {
+    const isActive = filterStatus===s;
+    const style = isActive && s!=='All' ? `style="background:${STATUS_COLORS[s]}22;border-color:${STATUS_COLORS[s]};color:${STATUS_COLORS[s]}"` : '';
+    return `<button class="${isActive?'filter-active':'filter-btn'}" data-filter-status="${esc(s)}" ${style}>${s==='All'?'All Statuses':s}</button>`;
+  }).join('');
+
+  const cardsHTML = filtered.length===0
+    ? `<div class="empty">${entries.length===0?'Nothing logged yet. Hit + Add to start.':'No matches found.'}</div>`
+    : filtered.map(e => {
+        const yr = effectiveYear(e);
+        const dateStr = (e.startDate||e.endDate)
+          ? (e.endDate ? `${formatDate(e.startDate||'')} → ${formatDate(e.endDate)}` : `Started ${formatDate(e.startDate)}`)
+          : yr;
+        return `<div class="card" data-open="${e.id}">
+          <div class="card-left">
+            <span class="type-icon">${TYPE_ICONS[e.type]}</span>
+            <div class="card-info">
+              <div class="card-title">${esc(e.title)}</div>
+              ${e.genre?`<div class="card-genre">${esc(e.genre)}</div>`:''}
+              <div class="card-meta">
+                ${e.rating>0?`<span class="card-rating">${stars(e.rating)}</span>`:''}
+                <span class="card-date">${esc(dateStr)}</span>
+              </div>
+            </div>
+          </div>
+          <span class="status-badge" style="background:${STATUS_COLORS[e.status]}22;color:${STATUS_COLORS[e.status]};border-color:${STATUS_COLORS[e.status]}">${e.status}</span>
+        </div>`;
+      }).join('');
+
+  return `
+    <div class="header">
+      <div>
+        <div class="header-title">LOGBOOK</div>
+        <div class="header-sub">Books · Series · Movies · Manga · Comics · Games</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-summary" id="btn-summary">≡ Summary</button>
+        <button class="btn-add" id="btn-add">+ Add</button>
+      </div>
+    </div>
+    <div class="stats-bar">${statsHTML}</div>
+    <div class="io-bar">
+      <button class="btn-io" id="btn-export">⬇ Export</button>
+      <button class="btn-io" id="btn-import">⬆ Import</button>
+    </div>
+    <div class="filters">
+      <input class="search-input" id="search-input" placeholder="🔍 Search…" value="${esc(searchQuery)}"/>
+      <div class="filter-row">${typeFilters}</div>
+      <div class="filter-row">${statusFilters}</div>
+    </div>
+    <div class="list">${cardsHTML}</div>`;
+}
+
+// ── Form ─────────────────────────────────────────────────────────────────
+function buildFormHTML() {
+  const typePills = TYPES.map(t=>`
+    <button class="${form.type===t?'pill-active':'pill'}" data-type="${esc(t)}">${TYPE_ICONS[t]} ${t}</button>`).join('');
+
+  const statusPills = STATUSES.map(s => {
+    const isActive = form.status===s;
+    const style = isActive ? `style="background:${STATUS_COLORS[s]}22;border-color:${STATUS_COLORS[s]};color:${STATUS_COLORS[s]}"` : '';
+    return `<button class="${isActive?'pill-active':'pill'}" data-status="${esc(s)}" ${style}>${s}</button>`;
+  }).join('');
+
+  const starsHTML = [1,2,3,4,5].map(r=>`
+    <span class="star ${r<=form.rating?'on':''}" data-star="${r}">★</span>`).join('')
+    + (form.rating>0?`<span class="clear-rating" id="clear-rating">✕</span>`:'');
+
+  const isDone = form.status==='Done';
+  const noDate = !form.startDate && !form.endDate;
+
+  return `
+    <div class="header">
+      <div>
+        <div class="header-title">LOGBOOK</div>
+        <div class="header-sub">${editId!==null?'Editing Entry':'New Entry'}</div>
+      </div>
+      <button class="btn-cancel" id="btn-cancel">✕ Cancel</button>
+    </div>
+    <div class="form-card">
+      <div class="field-group">
+        <label class="field-label">TITLE</label>
+        <input class="text-input" id="f-title" placeholder="Title" value="${esc(form.title)}"/>
+      </div>
+      <div class="field-group">
+        <label class="field-label">TYPE</label>
+        <div class="pills">${typePills}</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">STATUS</label>
+        <div class="pills">${statusPills}</div>
+      </div>
+      <div class="field-group">
+        <div class="date-row">
+          <div>
+            <label class="field-label">START DATE <span style="color:#3a3a3a">(optional)</span></label>
+            <input type="date" class="date-input" id="f-start" value="${form.startDate}"/>
+          </div>
+          ${isDone?`<div>
+            <label class="field-label">END DATE <span style="color:#3a3a3a">(optional)</span></label>
+            <input type="date" class="date-input" id="f-end" value="${form.endDate}"/>
+          </div>`:''}
+        </div>
+        ${noDate?`<div class="date-hint">No dates — will log under ${form.createdYear||new Date().getFullYear()}.</div>`:''}
+      </div>
+      <div class="field-group">
+        <label class="field-label">RATING</label>
+        <div class="stars">${starsHTML}</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">GENRE
+          ${genreLoading?'<span class="fetching-label"> · looking up…</span>':''}
+          ${!genreLoading&&form.genre&&!genreError?'<span class="fetching-label"> · fetched</span>':''}
+        </label>
+        <input class="text-input" id="f-genre" placeholder="${genreLoading?'Fetching via AI…':'e.g. Science Fiction, Fantasy'}" value="${esc(form.genre)}"/>
+        ${genreError?`<div class="genre-hint">${esc(genreError)}</div>`:''}
+      </div>
+      <div class="field-group">
+        <label class="field-label">NOTES</label>
+        <textarea class="textarea" id="f-notes" rows="3" placeholder="Optional notes…">${esc(form.notes)}</textarea>
+      </div>
+      <button class="btn-submit" id="btn-submit">${editId!==null?'Save Changes':'Add to Logbook'}</button>
+    </div>`;
+}
+
+// ── Detail ────────────────────────────────────────────────────────────────
+function buildDetailHTML() {
+  const e = entries.find(x=>x.id===detailId);
+  if (!e) { view='list'; return buildListHTML(); }
+  const yr = effectiveYear(e);
+  const showYear = !e.startDate && !e.endDate;
+  return `
+    <div class="header">
+      <button class="btn-back" id="btn-back">← Back</button>
+      <div class="actions-row">
+        <button class="action-btn" id="btn-edit">✏️ Edit</button>
+        <button class="action-btn" style="color:#c0392b" id="btn-delete">🗑️ Delete</button>
+      </div>
+    </div>
+    <div class="detail-card">
+      <div class="detail-type-row">
+        <span class="detail-type-icon">${TYPE_ICONS[e.type]}</span>
+        <span class="detail-type">${e.type.toUpperCase()}</span>
+        <span class="status-badge" style="margin-left:auto;background:${STATUS_COLORS[e.status]}22;color:${STATUS_COLORS[e.status]};border-color:${STATUS_COLORS[e.status]}">${e.status}</span>
+      </div>
+      <div class="detail-title">${esc(e.title)}</div>
+      ${e.genre?`<div class="detail-genre-row">${e.genre.split(',').map(g=>`<span class="genre-tag">${esc(g.trim())}</span>`).join('')}</div>`:''}
+      ${e.rating>0?`<div class="detail-rating">${stars(e.rating)}</div>`:''}
+      <div class="detail-dates">
+        ${e.startDate?`<div class="date-chip"><span class="date-chip-label">STARTED</span><span class="date-chip-val">${formatDate(e.startDate)}</span></div>`:''}
+        ${e.endDate?`<div class="date-chip"><span class="date-chip-label">FINISHED</span><span class="date-chip-val">${formatDate(e.endDate)}</span></div>`:''}
+        ${showYear?`<div class="date-chip"><span class="date-chip-label">YEAR</span><span class="date-chip-val">${yr}</span></div>`:''}
+      </div>
+      ${e.notes?`<div class="detail-notes"><div class="detail-notes-label">NOTES</div><div class="detail-notes-text">${esc(e.notes)}</div></div>`:''}
+    </div>`;
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────
+function buildSummaryHTML() {
+  const years = [...new Set(entries.map(e=>effectiveYear(e)))].sort((a,b)=>b-a);
+  const scoped = summaryYear==='All' ? entries : entries.filter(e=>effectiveYear(e)===summaryYear);
+  const {byType, byGenre} = buildSummary(scoped);
+  const typeData = Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v}));
+  const genreData = Object.entries(byGenre).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({k,v}));
+  const doneCount = scoped.filter(e=>e.status==='Done').length;
+
+  const yearBtns = ['All',...years].map(y=>`
+    <button class="${summaryYear===y?'filter-active':'filter-btn'}" data-sum-year="${y}">${y}</button>`).join('');
+
+  let contentHTML='';
+  if (summaryTab==='type') {
+    if (!typeData.length) contentHTML='<div class="empty">No entries yet.</div>';
+    else contentHTML=`
+      ${pieChartSVG(typeData.map(d=>({...d})))}
+      <div class="legend">${legendHTML(typeData)}</div>
+      <div class="summary-section" style="margin-top:28px;border-top:1px solid #1e1e1e;padding-top:20px">
+        <div class="section-label">BREAKDOWN</div>
+        ${barChartSVG(typeData.map(d=>({k:TYPE_ICONS[d.k]+' '+d.k, v:d.v})))}
+      </div>`;
+  } else {
+    if (!genreData.length) contentHTML='<div class="empty">No genre data. Add genres to entries first.</div>';
+    else {
+      const top8 = genreData.slice(0,8);
+      contentHTML=`
+        ${pieChartSVG(top8)}
+        <div class="legend">${legendHTML(top8)}</div>
+        ${genreData.length>8?'<div style="font-size:11px;color:#444;text-align:center;margin-top:6px;font-style:italic">Top 8 shown in chart</div>':''}
+        <div class="summary-section" style="margin-top:28px;border-top:1px solid #1e1e1e;padding-top:20px">
+          <div class="section-label">ALL GENRES</div>
+          ${barChartSVG(genreData, 15)}
+        </div>`;
+    }
+  }
+
+  return `
+    <div class="header">
+      <button class="btn-back" id="btn-back">← Back</button>
+      <div style="text-align:right">
+        <div class="header-title">SUMMARY</div>
+        <div class="header-sub">${doneCount} done · ${scoped.length} total</div>
+      </div>
+    </div>
+    ${years.length?`<div class="field-group"><div class="field-label">YEAR</div><div class="filter-row">${yearBtns}</div></div>`:''}
+    <div class="tab-toggle">
+      <button class="tab-btn${summaryTab==='type'?' active':''}" id="tab-type">By Medium</button>
+      <button class="tab-btn${summaryTab==='genre'?' active':''}" id="tab-genre">By Genre</button>
+    </div>
+    ${contentHTML}`;
+}
+
+// ── Event Binding ─────────────────────────────────────────────────────────
+function bindEvents() {
+  const $ = id => document.getElementById(id);
+  const on = (id, ev, fn) => { const el=$( id); if(el) el.addEventListener(ev,fn); };
+
+  // List
+  on('btn-add','click',()=>{ form=emptyForm(); editId=null; view='add'; render(); });
+  on('btn-summary','click',()=>{ view='summary'; render(); });
+  on('btn-export','click', exportData);
+  on('btn-import','click', importData);
+  on('search-input','input', e=>{ searchQuery=e.target.value; render(); });
+
+  document.querySelectorAll('[data-filter-type]').forEach(btn=>
+    btn.addEventListener('click',()=>{ filterType=btn.dataset.filterType; render(); }));
+  document.querySelectorAll('[data-filter-status]').forEach(btn=>
+    btn.addEventListener('click',()=>{ filterStatus=btn.dataset.filterStatus; render(); }));
+  document.querySelectorAll('[data-open]').forEach(el=>
+    el.addEventListener('click',()=>{ detailId=Number(el.dataset.open); view='detail'; render(); }));
+
+  // Form
+  on('btn-cancel','click',()=>{ if(detailId) view='detail'; else view='list'; render(); });
+  on('btn-submit','click', handleSubmit);
+
+  const fTitle = $('f-title');
+  if (fTitle) {
+    fTitle.addEventListener('input', e=>{ form.title=e.target.value; triggerGenreFetch(); });
+    // Don't re-render on every keystroke for title — just update state
+  }
+  const fGenre=$('f-genre'); if(fGenre) fGenre.addEventListener('input',e=>{ form.genre=e.target.value; });
+  const fNotes=$('f-notes'); if(fNotes) fNotes.addEventListener('input',e=>{ form.notes=e.target.value; });
+  const fStart=$('f-start'); if(fStart) fStart.addEventListener('change',e=>{ form.startDate=e.target.value; render(); });
+  const fEnd=$('f-end'); if(fEnd) fEnd.addEventListener('change',e=>{ form.endDate=e.target.value; render(); });
+
+  document.querySelectorAll('[data-type]').forEach(btn=>
+    btn.addEventListener('click',()=>{ form.type=btn.dataset.type; triggerGenreFetch(); render(); }));
+  document.querySelectorAll('[data-status]').forEach(btn=>
+    btn.addEventListener('click',()=>{
+      const s=btn.dataset.status;
+      if(s==='In Progress' && !form.startDate) form.startDate=new Date().toISOString().split('T')[0];
+      if(s!=='Done') form.endDate='';
+      form.status=s; render();
+    }));
+  document.querySelectorAll('[data-star]').forEach(s=>
+    s.addEventListener('click',()=>{ const r=Number(s.dataset.star); form.rating=form.rating===r?0:r; render(); }));
+  on('clear-rating','click',()=>{ form.rating=0; render(); });
+
+  // Detail
+  on('btn-back','click',()=>{ view=view==='detail'?'list':'list'; detailId=null; render(); });
+  on('btn-edit','click',()=>{
+    const e=entries.find(x=>x.id===detailId);
+    if(e){ form={...e}; editId=e.id; view='add'; render(); }
+  });
+  on('btn-delete','click',()=>{
+    if(confirm('Delete this entry?')){ entries=entries.filter(e=>e.id!==detailId); saveEntries(); detailId=null; view='list'; render(); }
+  });
+
+  // Summary
+  on('tab-type','click',()=>{ summaryTab='type'; render(); });
+  on('tab-genre','click',()=>{ summaryTab='genre'; render(); });
+  on('btn-back','click',()=>{ view='list'; render(); });
+  document.querySelectorAll('[data-sum-year]').forEach(btn=>
+    btn.addEventListener('click',()=>{ summaryYear=btn.dataset.sumYear; render(); }));
+}
+
+function handleSubmit() {
+  const title = document.getElementById('f-title')?.value?.trim() || form.title.trim();
+  const genre = document.getElementById('f-genre')?.value || form.genre;
+  const notes = document.getElementById('f-notes')?.value || form.notes;
+  const startDate = document.getElementById('f-start')?.value || form.startDate;
+  const endDate = document.getElementById('f-end')?.value || form.endDate;
+  if (!title) return;
+  const entry = { ...form, title, genre, notes, startDate, endDate,
+    createdYear: form.createdYear || String(new Date().getFullYear()) };
+  if (editId !== null) {
+    entries = entries.map(e => e.id===editId ? {...entry, id:editId} : e);
+    detailId = editId; editId=null; view='detail';
+  } else {
+    entry.id = Date.now(); entries.unshift(entry); view='list';
+  }
+  saveEntries(); render();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+render();
+</script>
+</body>
+</html>
